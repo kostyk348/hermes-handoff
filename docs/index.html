@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>handoff — a durable agent bus for Hermes</title>
+<meta name="description" content="Agent-to-agent messages as files: atomic post, leased take, ack, sweep. Not delivered becomes a state, not an error.">
+<style>
+  :root {
+    --bg: #07080b; --panel: #0e1015; --panel2: #12151c; --line: #1d222c;
+    --text: #e9edf4; --dim: #8b95a6; --accent: #7aa2ff; --accent2: #6ee7a8; --warn: #ffcf6e;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; color: var(--text); background:
+      radial-gradient(900px 500px at 10% -10%, rgba(122,162,255,.14), transparent 60%),
+      radial-gradient(800px 400px at 90% 0%, rgba(110,231,168,.1), transparent 55%), var(--bg);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif; }
+  a { color: var(--accent2); text-decoration: none; } a:hover { text-decoration: underline; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 24px; }
+  header { padding: 84px 0 48px; }
+  .kicker { display: inline-flex; gap: 8px; align-items: center; font: 600 11.5px/1 var(--mono);
+    letter-spacing: .14em; text-transform: uppercase; color: var(--accent);
+    border: 1px solid rgba(122,162,255,.3); background: rgba(122,162,255,.07); padding: 7px 11px; border-radius: 999px; }
+  h1 { font-size: clamp(40px, 7vw, 72px); line-height: 1.03; margin: 22px 0 14px; letter-spacing: -.03em; }
+  h1 span { color: var(--accent2); }
+  .lede { color: var(--dim); font-size: clamp(16px, 2vw, 19px); max-width: 62ch; margin: 0 0 28px; }
+  .badges { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 30px; }
+  .badge { font: 600 11.5px/1 var(--mono); color: var(--dim); border: 1px solid var(--line);
+    background: var(--panel); padding: 7px 10px; border-radius: 6px; }
+  .badge.ok { color: var(--accent2); border-color: rgba(110,231,168,.3); }
+  .term { border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+    background: linear-gradient(180deg, var(--panel2), var(--panel)); }
+  .term-bar { display: flex; gap: 7px; align-items: center; padding: 10px 14px;
+    border-bottom: 1px solid var(--line); font: 500 12px/1 var(--mono); color: var(--dim); }
+  .lamp { width: 10px; height: 10px; border-radius: 50%; background: #262c38; }
+  .lamp.g { background: #2f6d4a; } .lamp.y { background: #6d5f2f; } .lamp.r { background: #6d3434; }
+  pre { margin: 0; padding: 18px 20px; overflow-x: auto; font: 13px/1.7 var(--mono); }
+  pre .c { color: #59626f; } pre .p { color: var(--accent2); } pre .o { color: var(--dim); }
+  pre .h { color: var(--accent); }
+  section { padding: 64px 0 8px; }
+  h2 { font-size: clamp(22px, 3vw, 30px); margin: 0 0 8px; letter-spacing: -.02em; }
+  .sub { color: var(--dim); margin: 0 0 28px; max-width: 66ch; }
+  .flow { display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch; margin-bottom: 16px; }
+  .node { flex: 1 1 150px; border: 1px solid var(--line); border-radius: 10px; padding: 13px 15px;
+    background: var(--panel); }
+  .node .k { font: 700 13px/1 var(--mono); color: var(--accent2); }
+  .node .d { font: 12px/1.5 var(--mono); color: var(--dim); margin-top: 7px; }
+  .arrow { align-self: center; color: var(--dim); font: 13px var(--mono); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 20px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  th { font: 600 11px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+  td.m { font-family: var(--mono); }
+  ul.limits { color: var(--dim); padding-left: 20px; } ul.limits li { margin-bottom: 9px; }
+  ul.limits strong { color: var(--text); }
+  footer { border-top: 1px solid var(--line); margin-top: 60px; padding: 40px 0 70px; color: var(--dim);
+    font: 13px var(--mono); }
+  footer .links { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 14px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <span class="kicker">hermes plugin · linux · no dependencies</span>
+    <h1>handoff<span>.</span></h1>
+    <p class="lede">A message between two agents that cannot be lost because the receiver happened to be
+      busy. Three directories, one atomic <code>rename</code>: <em>not delivered</em> becomes a state
+      instead of an error.</p>
+    <div class="badges">
+      <span class="badge ok">validation: passed</span>
+      <span class="badge ok">tests 12 / 12</span>
+      <span class="badge">8 tools</span>
+      <span class="badge">MIT</span>
+      <span class="badge">dashboard panel</span>
+    </div>
+    <div class="term">
+      <div class="term-bar"><span class="lamp r"></span><span class="lamp y"></span><span class="lamp g"></span> hermes — handoff</div>
+<pre><span class="p">$</span> hermes plugins install kostyk348/hermes-handoff
+<span class="p">$</span> hermes plugins enable handoff
+
+<span class="p">$</span> handoff_post channel="inbox" to="careeressa" key="detmold" body="hold, do not send"
+<span class="o">{"success": true, "data": {"key": "detmold", "duplicate": false}}</span>
+
+<span class="p">$</span> handoff_take channel="inbox" for="careeressa" lease=120
+<span class="o">{"key": "detmold", "attempts": 1, "lease_until": 1795202600, "body": "hold, do not send"}</span>
+
+<span class="p">$</span> handoff_ack channel="inbox" key="detmold"
+<span class="o">{"success": true, "data": {"state": "done"}}</span></pre>
+    </div>
+  </div>
+</header>
+
+<section id="model">
+  <div class="wrap">
+    <h2>The whole protocol</h2>
+    <p class="sub">No daemon, no port, no database. The queue is a directory; state transitions are renames,
+      and a rename inside one filesystem is atomic.</p>
+    <div class="flow">
+      <div class="node"><div class="k">queue/&lt;key&gt;</div><div class="d">waiting for a consumer</div></div>
+      <div class="arrow">──take──▶</div>
+      <div class="node"><div class="k">leased/&lt;key&gt;</div><div class="d">visible to exactly one<br>lease_until recorded</div></div>
+      <div class="arrow">──ack──▶</div>
+      <div class="node"><div class="k">done/&lt;key&gt;</div><div class="d">finished once</div></div>
+    </div>
+    <div class="flow">
+      <div class="node"><div class="k">sweep</div><div class="d">lease expired → back to queue,<br>attempts + 1</div></div>
+      <div class="arrow">──nack──▶</div>
+      <div class="node"><div class="k">dead</div><div class="d">after N attempts,<br>for a human to look at</div></div>
+      <div class="arrow" style="opacity:.4">──</div>
+      <div class="node"><div class="k">idempotent</div><div class="d">posting the same key twice<br>changes nothing</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="tools">
+  <div class="wrap">
+    <h2>Eight tools</h2>
+    <p class="sub">Each one is a single verb; none of them guesses.</p>
+    <table>
+      <tbody>
+        <tr><td class="m">handoff_post</td><td>publish a message, idempotent by key</td></tr>
+        <tr><td class="m">handoff_take</td><td>claim one with a lease, exclusive while it lives</td></tr>
+        <tr><td class="m">handoff_ack</td><td>finish it</td></tr>
+        <tr><td class="m">handoff_nack</td><td>return it, or park it in <span class="m">dead</span></td></tr>
+        <tr><td class="m">handoff_sweep</td><td>recover messages from consumers that died</td></tr>
+        <tr><td class="m">handoff_list</td><td>inspect queue / leased / done / dead</td></tr>
+        <tr><td class="m">handoff_stats</td><td>totals per channel and state</td></tr>
+        <tr><td class="m">handoff_wait</td><td>block briefly, return the message already leased</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="proof">
+  <div class="wrap">
+    <h2>Measured, not promised</h2>
+    <div class="term">
+      <div class="term-bar"><span class="lamp r"></span><span class="lamp y"></span><span class="lamp g"></span> tests — 12 / 12</div>
+<pre>idempotency      post ×2 with key=detmold → second returns duplicate=true, queue stays at 1
+exclusivity      take ×2 → second sees nothing, message stays leased
+recipient filter messages for alpha are invisible to beta
+delay            post with delay=60 is not takeable yet
+crash recovery   take(lease=1) without ack → sweep returns it, next take shows attempts=2
+poison message   nack with max_attempts=1 → dead
+wait             returns a posted message at once; empty queue → null, and no hang
+interop          the Python plugin and the Rust binary read and write <span class="h">the same queue</span></pre>
+    </div>
+  </div>
+</section>
+
+<section id="limits">
+  <div class="wrap">
+    <h2>Limits, stated plainly</h2>
+    <ul class="limits">
+      <li><strong>Atomicity holds inside one filesystem.</strong> Across machines you need correct <code>rename</code> semantics (NFS yes, some FUSE mounts no).</li>
+      <li><strong>Delivery is at-least-once.</strong> A consumer must tolerate redelivery; the key is its idempotency token.</li>
+      <li><strong>Polling, not push.</strong> <code>wait</code> is a bounded wrapper around <code>take</code>.</li>
+      <li><strong>Plain text files.</strong> A bus for trusted local agents, not a secure transport.</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="links">
+      <a href="https://github.com/kostyk348/hermes-handoff">repository</a>
+      <a href="https://github.com/kostyk348/tools">the Rust binary and 10 more tools</a>
+      <a href="https://github.com/kostyk348/tools-site">tools — landing page</a>
+    </div>
+    <div>MIT · no dependencies · built by Konstantin Parashchuk</div>
+  </div>
+</footer>
+</body>
+</html>
