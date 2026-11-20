@@ -1,0 +1,8 @@
+{
+  "name": "handoff",
+  "label": "Handoff",
+  "description": "Agent bus on the filesystem: queue, leased, done — who owes what, and what is stuck.",
+  "icon": "Inbox",
+  "version": "0.1.0",
+  "api": "plugin_api.py"
+}
